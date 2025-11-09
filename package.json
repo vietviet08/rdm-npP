@@ -1,0 +1,30 @@
+{
+  "name": "rdm-platform",
+  "version": "1.0.0",
+  "description": "Remote Desktop Management Platform",
+  "scripts": {
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:ps": "docker-compose ps",
+    "seed:admin": "node database/seeds/seed-admin.js",
+    "db:migrate": "docker-compose exec postgres psql -U rdm_user -d rdm_platform -f /docker-entrypoint-initdb.d/001_initial_schema.sql"
+  },
+  "keywords": [
+    "remote-desktop",
+    "guacamole",
+    "rdp",
+    "vnc",
+    "ssh"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/pg": "^8.10.9"
+  }
+}
