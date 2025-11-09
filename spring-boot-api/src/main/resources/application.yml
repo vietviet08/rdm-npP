@@ -54,6 +54,10 @@ springdoc:
         tags-sorter: alpha
         operations-sorter: alpha
 
+guacamole:
+    url: ${GUACAMOLE_URL:http://localhost/guacamole}
+    service-account: ${GUACAMOLE_SERVICE_ACCOUNT:rdm-service}
+
 management:
     endpoints:
         web:
