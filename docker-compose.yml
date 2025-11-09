@@ -6,8 +6,8 @@ services:
     container_name: rdm-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-rdm_platform}
-      POSTGRES_USER: ${POSTGRES_USER:-rdm_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rdm_password}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -17,7 +17,7 @@ services:
     networks:
       - rdm-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rdm_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,13 +54,13 @@ services:
       POSTGRES_HOSTNAME: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DATABASE: ${POSTGRES_DB:-rdm_platform}
-      POSTGRES_USERNAME: ${POSTGRES_USER:-rdm_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rdm_password}
+      POSTGRES_USERNAME: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DRIVER: org.postgresql.Driver
     volumes:
       - ./docker/guacamole/guacamole.properties:/opt/guacamole/guacamole.properties:ro
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - rdm-network
     restart: unless-stopped
@@ -70,11 +70,82 @@ services:
       timeout: 10s
       retries: 3
 
+  spring-boot-api:
+    build:
+      context: ./spring-boot-api
+      dockerfile: Dockerfile
+    container_name: rdm-spring-boot-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-rdm_platform}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-e813dd4fc06b5cd6c84a721f1dc360427af620e85326690cba39fee0f837c406}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-604800000}
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    networks:
+      - rdm-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nuxt-dashboard:
+    build:
+      context: ./nuxt-dashboard
+      dockerfile: Dockerfile
+    container_name: rdm-nuxt-dashboard
+    depends_on:
+      spring-boot-api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NUXT_HOST: 0.0.0.0
+      NUXT_PORT: 3000
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-rdm_platform}
+      DATABASE_USER: ${POSTGRES_USER:-postgres}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-e813dd4fc06b5cd6c84a721f1dc360427af620e85326690cba39fee0f837c406}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SESSION_SECRET: ${SESSION_SECRET:-a6bd22df66bd9a35024b2c3bdd62fc5c32d1537785e8d6902624d75823e218eb}
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-1800000}
+      APP_URL: ${APP_URL:-http://localhost}
+      API_URL: ${API_URL:-/api}
+      GUACAMOLE_URL: ${GUACAMOLE_URL:-/guacamole}
+    ports:
+      - "3000:3000"
+    networks:
+      - rdm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   nginx:
     image: nginx:alpine
     container_name: rdm-nginx
     depends_on:
       - guacamole
+      - spring-boot-api
+      - nuxt-dashboard
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro

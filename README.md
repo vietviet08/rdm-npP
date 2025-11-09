@@ -43,7 +43,8 @@ docker-compose up -d
 Services sẽ được khởi động:
 
 -   PostgreSQL: `localhost:5432`
--   Apache Guacamole: `localhost:8080`
+-   Spring Boot API: `localhost:8080`
+-   Apache Guacamole: `localhost:8081`
 -   guacd: `localhost:4822`
 -   Nginx: `localhost:80`
 
@@ -51,7 +52,18 @@ Services sẽ được khởi động:
 
 Database schema sẽ được tự động tạo khi PostgreSQL container khởi động lần đầu. Migration scripts trong `database/migrations/` sẽ được chạy tự động.
 
-### 5. Setup Nuxt Application
+### 5. Seed Admin User
+
+```bash
+node database/seeds/seed-admin.js
+```
+
+Default credentials:
+
+-   Username: `admin`
+-   Password: `admin123`
+
+### 6. Setup Nuxt Application
 
 ```bash
 cd nuxt-dashboard
@@ -60,6 +72,14 @@ npm run dev
 ```
 
 Nuxt application sẽ chạy tại `http://localhost:3000`
+
+### 7. Access Applications
+
+-   Nuxt Frontend: http://localhost:3000
+-   Spring Boot API: http://localhost:8080/api
+-   Swagger UI: http://localhost:8080/swagger-ui.html
+-   Guacamole: http://localhost:8081/guacamole
+-   Nginx (proxied): http://localhost
 
 ## 📁 Project Structure
 
@@ -73,14 +93,23 @@ project/
 ├── docker/
 │   ├── guacamole/              # Guacamole configuration
 │   └── nginx/                  # Nginx configuration
+├── spring-boot-api/            # Spring Boot API
+│   ├── src/main/java/com/rdm/
+│   │   ├── controller/         # REST controllers
+│   │   ├── service/            # Business logic
+│   │   ├── repository/         # Data access
+│   │   ├── model/              # Entity models
+│   │   ├── dto/                # Data transfer objects
+│   │   ├── security/           # Security configuration
+│   │   └── exception/          # Exception handling
+│   └── src/main/resources/
+│       └── application.yml     # Application configuration
 ├── nuxt-dashboard/             # Nuxt.js application
-│   ├── server/                 # Server-side code
-│   │   ├── api/                # API routes
-│   │   └── utils/              # Server utilities
-│   ├── components/             # Vue components
+│   ├── composables/            # Composables (useApi, useAuth)
+│   ├── stores/                 # Pinia stores
+│   ├── middleware/             # Route middleware
 │   ├── pages/                  # Page routes
-│   ├── composables/            # Composables
-│   ├── utils/                  # Client utilities
+│   ├── components/             # Vue components
 │   └── types/                  # TypeScript types
 └── docs/                       # Documentation
 ```
@@ -138,11 +167,17 @@ Migration scripts trong `database/migrations/` sẽ được chạy tự động
 node database/seeds/seed-admin.js
 ```
 
-Hoặc chạy migrations thủ công:
+### Spring Boot API
+
+Spring Boot API sẽ tự động start khi Docker Compose chạy. Để build và chạy manually:
 
 ```bash
-docker-compose exec postgres psql -U rdm_user -d rdm_platform -f /docker-entrypoint-initdb.d/001_initial_schema.sql
+cd spring-boot-api
+mvn clean package
+mvn spring-boot:run
 ```
+
+API documentation: http://localhost:8080/swagger-ui.html
 
 ## 📚 Documentation
 
